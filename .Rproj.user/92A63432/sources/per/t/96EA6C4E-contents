@@ -1,0 +1,78 @@
+---
+title: "if exploration"
+format: html
+---
+
+## Read in Poem
+
+```{r}
+library(stringr)
+
+if_txt <- readLines("if.txt")
+if_txt <- str_trim(if_txt)
+
+# unique(unlist(str_extract_all(if_txt, "[[:punct:]]")))
+
+if_txt <- str_replace_all(if_txt, ",", " ,")
+if_txt <- str_replace_all(if_txt, ";", " ;")
+if_txt <- str_replace_all(if_txt, ":", " :")
+if_txt <- str_replace_all(if_txt, "—", " — ")
+# if_txt <- str_replace_all(if_txt, "-", " -")
+if_txt <- str_replace_all(if_txt, "‘", "‘ ")
+if_txt <- str_replace_all(if_txt, "!", " !")
+if_txt <- str_replace_all(if_txt, "’$|’ ", " ’ ")
+if_txt <- str_replace_all(if_txt, "seconds ’", "seconds’")
+
+words <- str_split(if_txt, " ")
+
+library(dplyr)
+library(tidyr)
+
+poem <- tibble(word = I(words)) %>%
+    mutate(line = 1:length(words)) %>% 
+    unnest(cols = word) %>% 
+    mutate(word_lower = tolower(word))
+
+unique_words <- tibble(unique_word = unique(tolower(poem$word))) %>% 
+    arrange(unique_word) %>% 
+    mutate(word_num = 1:length(unique_word))
+
+poem <- poem %>% 
+    left_join(unique_words, by = c("word_lower" = "unique_word"))
+
+poem_written <- poem %>% 
+    group_by(line) %>% 
+    summarise(poem = paste0(word, collapse = " "),
+              poem_number = paste0(word_num, collapse = " "),)
+
+poem_written %>% 
+    pull(poem_number) %>% 
+    write.csv("if_number.txt", row.names = FALSE)
+
+library(ggplot2)
+
+poem <- poem %>% 
+    mutate(color = ifelse(word_lower == "if", TRUE, FALSE),
+           size = ifelse(word_lower == "if", 1, 0.9), 
+           order = (1:n()) + 2)
+
+ggplot(poem, aes(x = order, y = word_num, color = color, size = color)) + 
+    geom_point() + 
+    scale_size_manual(values = c(1, 2)) + 
+    scale_color_manual(values = c("#2C70C6", "#FF6601")) + 
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0.01))) + 
+    scale_y_continuous(expand = expansion(mult = c(0.01, 0.01))) + 
+    ggtitle("If", subtitle = "by Rudyard Kippling") + 
+    theme(legend.position = "none",
+          axis.ticks = element_blank(),
+          panel.background = element_blank(),
+          panel.grid = element_line(color = "light gray"), 
+          plot.title = element_text(color = "#FF6601"),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          panel.border = element_rect(fill = NA, color = "black"))
+
+ggplot(poem, aes(x = order, y = word_num)) + 
+    geom_line()
+```
+
